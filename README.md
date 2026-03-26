@@ -2,6 +2,8 @@
 
 AudioKit is a high-performance Flutter Linux desktop application designed for batch **Video-to-Audio conversion** and **Audio Merging**. It features a modern Ubuntu-style UI (using Yaru) and provides real-time progress tracking and process management for all operations.
 
+![AudioKit Screenshot](assets/screenshots/app_screenshot.png)
+
 ## ✨ Features
 
 - **Video to Audio Conversion**: 
@@ -35,7 +37,21 @@ sudo dnf install ffmpeg
 sudo pacman -S ffmpeg
 ```
 
-## 🚀 Getting Started
+## 📦 Download & Installation
+
+### Debian/Ubuntu (.deb)
+
+You can install the latest release using the `.deb` package:
+
+```bash
+# Install the package
+sudo dpkg -i dist/1.0.0+1/audiokit-1.0.0+1-linux.deb
+
+# Fix missing dependencies (if any)
+sudo apt-get install -f
+```
+
+## 🚀 Getting Started (Development)
 
 ### Clone the repository
 ```bash
@@ -70,3 +86,4 @@ flutter build linux --release
 ## 📜 License
 
 This project is open source. See the LICENSE for details (if any).
+

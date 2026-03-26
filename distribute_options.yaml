@@ -1,0 +1,12 @@
+output: dist/
+releases:
+  - name: release
+    jobs:
+      - name: linux-deb
+        package:
+          platform: linux
+          target: deb
+          args:
+            app_name: "Audiokit"
+            executable_name: "Audio Kit"
+            icon_path: "assets/linux/app_icon.png"

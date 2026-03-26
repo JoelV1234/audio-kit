@@ -1,0 +1,39 @@
+display_name: Audio Kit
+package_name: audiokit
+description: High-performance Flutter application for batch video-to-audio conversion and audio merging.
+
+maintainer:
+  name: Joel Vaz
+  email: joelvaz1611@gmail.com
+
+priority: optional
+
+section: sound
+
+installed_size: 25000
+
+dependencies:
+  - ffmpeg
+
+essential: false
+
+icon: assets/linux/app_icon.png
+
+postuninstall_scripts:
+  - echo "Thank you for using AudioKit!"
+
+keywords:
+  - Audio
+  - Video
+  - Converter
+  - Merger
+  - FFmpeg
+  - Batch
+
+generic_name: Audio Converter & Merger
+
+categories:
+  - AudioVideo
+  - Utility
+
+startup_notify: true
