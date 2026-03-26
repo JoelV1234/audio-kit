@@ -7,6 +7,7 @@ class MediaFile {
   final String name;
   MediaFileStatus status;
   double progress;
+  String statusMessage;
   String? errorMessage;
   String? eta;
 
@@ -15,6 +16,7 @@ class MediaFile {
     required this.name,
     this.status = MediaFileStatus.pending,
     this.progress = 0.0,
+    this.statusMessage = '',
     this.errorMessage,
     this.eta,
   });
@@ -24,6 +26,7 @@ class MediaFile {
     String? name,
     MediaFileStatus? status,
     double? progress,
+    String? statusMessage,
     String? errorMessage,
     String? eta,
   }) {
@@ -32,6 +35,7 @@ class MediaFile {
       name: name ?? this.name,
       status: status ?? this.status,
       progress: progress ?? this.progress,
+      statusMessage: statusMessage ?? this.statusMessage,
       errorMessage: errorMessage ?? this.errorMessage,
       eta: eta ?? this.eta,
     );

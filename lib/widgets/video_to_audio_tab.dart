@@ -8,6 +8,8 @@ import 'package:path/path.dart' as p;
 import '../models/media_file.dart';
 import '../services/ffmpeg_service.dart';
 
+import 'video_to_audio/file_list_tile.dart';
+
 /// Tab for converting video files (mp4) to audio (Opus, MP3, HE-AAC).
 class VideoToAudioTab extends StatefulWidget {
   final VoidCallback? onStateChanged;
@@ -643,23 +645,18 @@ class VideoToAudioTabState extends State<VideoToAudioTab>
                           itemCount: _files.length,
                           itemBuilder: (context, index) {
                             final file = _files[index];
-                            return _FileListTile(
+                            return FileListTile(
                               file: file,
-                              onConvert:
-                                  (file.status == MediaFileStatus.pending &&
+                              onRetry:
+                                  (file.status == MediaFileStatus.error &&
                                           !_isConverting)
                                       ? () => _convertSingle(index)
-                                      : null,
+                                      : () {},
                               onCancel:
                                   file.status == MediaFileStatus.processing
                                       ? () => _cancelConversion(index)
-                                      : null,
-                              onRemove:
-                                  _isConverting &&
-                                          file.status ==
-                                              MediaFileStatus.processing
-                                      ? null
-                                      : () => _removeFile(index),
+                                      : () {},
+                              onRemove: () => _removeFile(index),
                             );
                           },
                         ),
@@ -669,195 +666,5 @@ class VideoToAudioTabState extends State<VideoToAudioTab>
         ),
       ),
     );
-  }
-}
-
-/// Individual file tile with a progress bar and percentage beneath it.
-class _FileListTile extends StatelessWidget {
-  final MediaFile file;
-  final VoidCallback? onConvert;
-  final VoidCallback? onRemove;
-  final VoidCallback? onCancel;
-
-  const _FileListTile({
-    required this.file,
-    this.onConvert,
-    this.onRemove,
-    this.onCancel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Column(
-        children: [
-          ListTile(
-            leading: _statusIcon(file.status),
-            title: Text(file.name, overflow: TextOverflow.ellipsis),
-            subtitle:
-                file.status == MediaFileStatus.error
-                    ? Text(
-                      file.errorMessage ?? 'Unknown error',
-                      style: const TextStyle(color: Colors.red, fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    )
-                    : Text(
-                      file.path,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall,
-                    ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Percentage and ETA label.
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _percentageLabel(),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: _progressColor(),
-                      ),
-                    ),
-                    if (file.status == MediaFileStatus.processing &&
-                        file.eta != null &&
-                        file.eta!.isNotEmpty)
-                      Text(
-                        file.eta!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: _progressColor(),
-                          fontSize: 10,
-                        ),
-                      ),
-                  ],
-                ),
-                // Per-file convert button.
-                if (onConvert != null) ...[
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: onConvert,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      minimumSize: const Size(0, 32),
-                    ),
-                    child: const Text('Convert'),
-                  ),
-                ],
-                if (onCancel != null) ...[
-                  const SizedBox(width: 8),
-                  FilledButton.tonal(
-                    onPressed: onCancel,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      minimumSize: const Size(0, 32),
-                      backgroundColor: Colors.red.withOpacity(0.1),
-                      foregroundColor: Colors.red,
-                    ),
-                    child: const Text('Cancel'),
-                  ),
-                ],
-                if (onRemove != null) ...[
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: onRemove,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          // Progress bar below each file.
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child:
-                  file.status == MediaFileStatus.processing
-                      ? LinearProgressIndicator(
-                        value: file.progress > 0 ? file.progress : null,
-                        minHeight: 4,
-                        backgroundColor:
-                            theme.colorScheme.surfaceContainerHighest,
-                        color: Colors.blue,
-                      )
-                      : LinearProgressIndicator(
-                        value: _progressValue(),
-                        minHeight: 4,
-                        backgroundColor:
-                            theme.colorScheme.surfaceContainerHighest,
-                        color: _progressColor(),
-                      ),
-            ),
-          ),
-          const SizedBox(height: 4),
-        ],
-      ),
-    );
-  }
-
-  String _percentageLabel() {
-    switch (file.status) {
-      case MediaFileStatus.pending:
-        return '0%';
-      case MediaFileStatus.processing:
-        return file.progress > 0
-            ? '${(file.progress * 100).toStringAsFixed(1)}%'
-            : '...';
-      case MediaFileStatus.done:
-        return '100%';
-      case MediaFileStatus.error:
-        return 'Error';
-    }
-  }
-
-  double _progressValue() {
-    switch (file.status) {
-      case MediaFileStatus.pending:
-        return 0.0;
-      case MediaFileStatus.processing:
-        return file.progress;
-      case MediaFileStatus.done:
-        return 1.0;
-      case MediaFileStatus.error:
-        return 1.0;
-    }
-  }
-
-  Color _progressColor() {
-    switch (file.status) {
-      case MediaFileStatus.pending:
-        return Colors.grey.shade400;
-      case MediaFileStatus.processing:
-        return Colors.blue;
-      case MediaFileStatus.done:
-        return Colors.green;
-      case MediaFileStatus.error:
-        return Colors.red;
-    }
-  }
-
-  Widget _statusIcon(MediaFileStatus status) {
-    switch (status) {
-      case MediaFileStatus.pending:
-        return const Icon(Icons.hourglass_empty, color: Colors.grey);
-      case MediaFileStatus.processing:
-        return const Icon(Icons.sync, color: Colors.blue);
-      case MediaFileStatus.done:
-        return const Icon(Icons.check_circle, color: Colors.green);
-      case MediaFileStatus.error:
-        return const Icon(Icons.error, color: Colors.red);
-    }
   }
 }

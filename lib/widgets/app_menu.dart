@@ -14,7 +14,7 @@ class AppMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.menu),
+      icon: const Icon(Icons.settings),
       tooltip: 'Menu',
       onSelected: (value) {
         switch (value) {
