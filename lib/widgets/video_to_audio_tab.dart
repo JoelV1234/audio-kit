@@ -275,53 +275,42 @@ class VideoToAudioTabState extends State<VideoToAudioTab>
 
   // --- Conversion ---
 
-  Future<String> _getDefaultOutputDir() async {
+  Future<String?> _pickOutputDir() async {
     final home = Platform.environment['HOME'] ?? '';
     final downloads = p.join(home, 'Downloads');
-    if (await Directory(downloads).exists()) {
-      return downloads;
-    }
-    return home;
+    final defaultDir = await Directory(downloads).exists() ? downloads : home;
+
+    // Use zenity directly because the GTK file chooser used by
+    // file_picker ignores initialDirectory on Linux.
+    final result = await Process.run('zenity', [
+      '--file-selection',
+      '--directory',
+      '--title=Choose output folder',
+      '--filename=$defaultDir/',
+    ]);
+    if (result.exitCode != 0) return null;
+    final path = result.stdout.toString().trim();
+    return path.isEmpty ? null : path;
   }
 
   Future<void> _cancelConversion(int index) async {
     final process = _activeProcesses[index];
     if (process == null) return;
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('Stop Conversion?'),
-            content: const Text(
-              'Are you sure you want to stop converting this file? The partial output will be incomplete.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('No'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Yes, Stop'),
-              ),
-            ],
-          ),
-    );
-    if (confirm == true) {
-      if (mounted) {
-        setState(() {
-          _activeProcesses.remove(index);
-          _files[index] = _files[index].copyWith(
-            status: MediaFileStatus.pending,
-            progress: 0.0,
-            errorMessage: null,
-          );
-          _isConverting = _activeProcesses.isNotEmpty || _cancelRequested;
-        });
-        _notifyParent();
-      }
-      process.kill();
+    // Kill the process first so the _convertSingle completer resolves.
+    process.kill();
+    _activeProcesses.remove(index);
+
+    if (mounted) {
+      setState(() {
+        _files[index] = _files[index].copyWith(
+          status: MediaFileStatus.pending,
+          progress: 0.0,
+          errorMessage: null,
+        );
+        _isConverting = _activeProcesses.isNotEmpty;
+      });
+      _notifyParent();
     }
   }
 
@@ -372,10 +361,7 @@ class VideoToAudioTabState extends State<VideoToAudioTab>
     final file = _files[index];
     if (file.status != MediaFileStatus.pending) return;
 
-    final outputDir = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Choose output folder',
-      initialDirectory: await _getDefaultOutputDir(),
-    );
+    final outputDir = await _pickOutputDir();
     if (outputDir == null) return;
 
     setState(() {
@@ -442,10 +428,7 @@ class VideoToAudioTabState extends State<VideoToAudioTab>
     }
     if (pendingIndices.isEmpty) return;
 
-    final outputDir = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Choose output folder',
-      initialDirectory: await _getDefaultOutputDir(),
-    );
+    final outputDir = await _pickOutputDir();
     if (outputDir == null) return;
 
     setState(() {
@@ -782,7 +765,7 @@ class _FileListTile extends StatelessWidget {
                       backgroundColor: Colors.red.withOpacity(0.1),
                       foregroundColor: Colors.red,
                     ),
-                    child: const Text('Stop'),
+                    child: const Text('Cancel'),
                   ),
                 ],
                 if (onRemove != null) ...[

@@ -28,6 +28,7 @@ class AudioMergerTabState extends State<AudioMergerTab>
   String _mergeEta = '';
   Process? _activeProcess;
   bool _cancelRequested = false;
+  String? _outputPath;
 
   @override
   bool get wantKeepAlive => true;
@@ -220,34 +221,57 @@ class AudioMergerTabState extends State<AudioMergerTab>
   Future<void> _cancelMerge() async {
     if (!_isMerging) return;
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('Stop Merging?'),
-            content: const Text(
-              'Are you sure you want to stop the merging process? '
-              'Any progress will be lost.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('No'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Yes, Stop'),
-              ),
-            ],
-          ),
-    );
+    final pathToDelete = _outputPath;
 
-    if (confirm == true) {
-      if (mounted) {
-        setState(() {
-          _cancelRequested = true;
-          _activeProcess?.kill();
-        });
+    setState(() {
+      _cancelRequested = true;
+      _activeProcess?.kill();
+      _isMerging = false;
+      _mergeProgress = 0.0;
+      _mergeEta = '';
+      _activeProcess = null;
+    });
+    _notifyParent();
+
+    if (pathToDelete != null && mounted) {
+      final deleteFile = await showDialog<bool>(
+        context: context,
+        builder:
+            (ctx) => AlertDialog(
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 40,
+                color: Colors.orange,
+              ),
+              title: const Text('Delete Partial File?'),
+              content: Text(
+                'The merge was cancelled. Would you like to delete '
+                'the partially created file?\n\n'
+                '${p.basename(pathToDelete)}',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Keep'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text('Delete'),
+                ),
+              ],
+            ),
+      );
+
+      if (deleteFile == true) {
+        try {
+          final file = File(pathToDelete);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (_) {
+          // Best-effort deletion
+        }
       }
     }
   }
@@ -281,6 +305,7 @@ class AudioMergerTabState extends State<AudioMergerTab>
     if (!finalPath.endsWith(ext)) {
       finalPath = '$finalPath$ext';
     }
+    _outputPath = finalPath;
 
     setState(() {
       _isMerging = true;
@@ -415,8 +440,8 @@ class AudioMergerTabState extends State<AudioMergerTab>
                   else
                     FilledButton.icon(
                       onPressed: _cancelMerge,
-                      icon: const Icon(Icons.stop),
-                      label: const Text('Stop'),
+                      icon: const Icon(Icons.cancel),
+                      label: const Text('Cancel'),
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.red.withOpacity(0.1),
                         foregroundColor: Colors.red,
